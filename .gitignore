@@ -1,0 +1,29 @@
+node_modules/
+.expo/
+dist/
+web-build/
+ios/
+android/
+*.log
+.DS_Store
+
+# Estado local del lanzador (OrganIO.cmd)
+.organio/
+
+# Secretos: nunca al repositorio
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/
+supabase/signing_keys.json
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Iconos generados desde apps/app/assets/brand/organio-mark.svg (npm install)
+apps/app/assets/*.png
+apps/app/public/*.png

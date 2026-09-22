@@ -1,0 +1,14 @@
+# Cabeceras de seguridad para el alojamiento de la web (formato de Cloudflare Pages y Netlify).
+# connect-src limita a quién puede hablar la app: solo a sí misma y a Supabase.
+# style-src necesita 'unsafe-inline' porque react-native-web genera los estilos en tiempo de ejecución;
+# scripts en línea NO se permiten (el build no los usa).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable

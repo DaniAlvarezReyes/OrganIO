@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: Núcleo compartido
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+        env:
+          TZ: Europe/Madrid
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
+  database:
+    name: Base de datos y seguridad
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL 16 con pgTAP
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-16 postgresql-contrib-16 postgresql-16-pgtap libtap-parser-sourcehandler-pgtap-perl
+          sudo systemctl start postgresql
+          sudo -u postgres createuser --superuser "$USER"
+      - run: scripts/test-db.sh
+        env:
+          PGDATABASE: postgres
+
+  app:
+    name: App contra la base real (API y extremo a extremo)
+    runs-on: ubuntu-24.04
+    env:
+      POSTGREST_VERSION: v16.3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: PostgreSQL 16 y PostgREST
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-16 postgresql-contrib-16
+          sudo systemctl start postgresql
+          sudo -u postgres createuser --superuser "$USER"
+          curl -fsSL -o /tmp/postgrest.tar.xz \
+            "https://github.com/PostgREST/postgrest/releases/download/${POSTGREST_VERSION}/postgrest-${POSTGREST_VERSION}-linux-static-x86-64.tar.xz"
+          sudo tar -xJf /tmp/postgrest.tar.xz -C /usr/local/bin
+      - run: npm run test:api
+        env:
+          PGDATABASE: postgres
+      - run: npm run test:e2e
+        env:
+          PGDATABASE: postgres
+
+  secrets:
+    name: Búsqueda de secretos
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

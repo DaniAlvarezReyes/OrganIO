@@ -1,0 +1,8 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.2.2-organio.1",
+  "description": "Sustituto de decode-uri-component 0.2.x con coste lineal (GHSA-vcc3-ghjq-m6fr). Misma API CommonJS.",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true
+}
