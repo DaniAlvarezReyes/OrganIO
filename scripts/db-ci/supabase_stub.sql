@@ -71,9 +71,12 @@ create table storage.objects (
   created_at timestamptz default now(),
   unique (bucket_id, name)
 );
+-- Como en Storage real (comprobado con role_table_grants y pg_class en la base local): RLS en
+-- las dos tablas, cero políticas en buckets, y TODOS los privilegios también para anon. La barrera
+-- es la RLS, no el GRANT: sin anon aquí, una política escrita por error `to public` pasaría en CI.
 alter table storage.objects enable row level security;
-grant select, insert, update, delete on storage.objects to authenticated, service_role;
-grant select on storage.buckets to authenticated, service_role;
+alter table storage.buckets enable row level security;
+grant all on storage.objects, storage.buckets to anon, authenticated, service_role;
 
 -- Misma definición que Supabase
 create or replace function storage.foldername(name text) returns text[] language plpgsql as $$
