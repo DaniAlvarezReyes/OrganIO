@@ -1,0 +1,2 @@
+# Los scripts de shell se ejecutan en CI (Linux): siempre LF, aunque se editen en Windows.
+*.sh text eol=lf
