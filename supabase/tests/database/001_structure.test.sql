@@ -100,14 +100,10 @@ select is_empty(
   'Ninguna política concede acceso a anon'
 );
 
--- El borrado real (B no puede borrar los ficheros de A) se prueba en T4 contra el cliente de
--- Storage, que es el camino que usa la app. Aquí solo se comprueba la estructura: que
--- attachments_delete_own sigue siendo DELETE/authenticated y que su USING es exactamente el
--- mismo que el de attachments_select_own. 004_storage.test.sql ya no puede probar el borrado
--- en sí (el disparador protect_delete de Storage bloquea cualquier DELETE directo por SQL
--- antes de que la RLS se evalúe), pero el SELECT con la misma condición de carpeta SÍ se
--- comprueba de forma conductual ahí ('B no ve las imágenes de A'): si ambas políticas exigen
--- literalmente la misma condición, esa prueba conductual respalda también al DELETE.
+-- Estructura de la política de borrado: sigue siendo DELETE/authenticated y su USING es
+-- exactamente el mismo que el de attachments_select_own. El comportamiento (B no puede borrar
+-- los ficheros de A, con el guardarraíl protect_delete levantado) se prueba en
+-- 004_storage.test.sql; el borrado a través del cliente de Storage, en T4.
 select ok(
   exists (
     select 1 from pg_policies
