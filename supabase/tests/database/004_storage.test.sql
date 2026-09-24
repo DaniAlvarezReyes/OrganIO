@@ -70,7 +70,16 @@ select throws_ok(
 
 select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-4000-8000-00000000000b","role":"authenticated"}', true);
 select is((select count(*)::int from storage.objects where bucket_id = 'attachments'), 0, 'B no ve las imágenes de A');
-select is_empty($$ delete from storage.objects where bucket_id = 'attachments' returning id $$, 'B no puede borrar las imágenes de A');
+-- protect_delete es un disparador POR SENTENCIA (FOR EACH STATEMENT): salta antes de que la
+-- RLS filtre ninguna fila, así que revienta igual aunque la sentencia no fuera a borrar nada.
+-- Por eso este error no demuestra que la RLS impida a B borrar ficheros de A en concreto:
+-- esa cobertura vive en 001_structure.test.sql (la política sigue existiendo con la forma
+-- correcta) y en T4 (borrado real contra el cliente de Storage, con RLS ya sin este bloqueo).
+select throws_ok(
+  $$ delete from storage.objects where bucket_id = 'attachments' returning id $$,
+  '42501', null,
+  'Storage bloquea el borrado directo por SQL sobre attachments (protect_delete)'
+);
 
 select * from finish();
 rollback;
