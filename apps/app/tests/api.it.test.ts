@@ -6,7 +6,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHmac } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import * as api from '../src/data/api';
 import type { Database } from '../src/data/database.types';
 import { toUserError } from '../src/data/errors';
@@ -16,6 +16,11 @@ const URL = process.env.ORGANIO_IT_URL;
 const SECRET = process.env.ORGANIO_IT_JWT_SECRET;
 const A = 'aaaaaaaa-0000-4000-8000-00000000000a';
 const B = 'bbbbbbbb-0000-4000-8000-00000000000b';
+
+// scripts/test-api.sh exige la suite: allí omitirla sería un verde que no prueba nada.
+if (process.env.ORGANIO_IT_REQUIRED === '1' && (!URL || !SECRET)) {
+  throw new Error('ORGANIO_IT_REQUIRED=1 pero faltan ORGANIO_IT_URL u ORGANIO_IT_JWT_SECRET');
+}
 
 function jwt(claims: object): string {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -37,10 +42,17 @@ async function failure(p: Promise<unknown>): Promise<unknown> {
   throw new Error('Se esperaba un error');
 }
 
+// Vitest ejecuta el cuerpo del describe para recoger las pruebas aunque la suite esté omitida:
+// los clientes (que firman JWT con SECRET) se crean en beforeAll, que no corre si se omite.
 describe.skipIf(!URL || !SECRET)('capa de datos contra la base real', () => {
-  const a = as(A);
-  const b = as(B);
+  let a: api.Db;
+  let b: api.Db;
   const taskId = randomUUID();
+
+  beforeAll(() => {
+    a = as(A);
+    b = as(B);
+  });
 
   it('funcionalidades y perfil del usuario', async () => {
     const flags = await api.getFeatures(a);

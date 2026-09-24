@@ -30,4 +30,4 @@ trap 'kill $PGRST_PID $PROXY_PID 2>/dev/null || true; rm -rf "$WORK"' EXIT
 for _ in $(seq 1 50); do curl -sf http://127.0.0.1:3100/ >/dev/null && break; sleep 0.2; done
 
 cd "$ROOT/apps/app"
-ORGANIO_IT_URL=http://127.0.0.1:54399 ORGANIO_IT_JWT_SECRET="$SECRET" TZ=Europe/Madrid npx vitest run tests/
+ORGANIO_IT_REQUIRED=1 ORGANIO_IT_URL=http://127.0.0.1:54399 ORGANIO_IT_JWT_SECRET="$SECRET" TZ=Europe/Madrid npx vitest run tests/
