@@ -62,14 +62,45 @@ Cada `push` pasa `npm audit` y gitleaks en integración continua. Estado a 21/09
 
 `npm audit fix --force` **no debe usarse**: propone bajar Expo a la versión 46.
 
+## Paridad entre CI y Storage real (entrega 3 · T0b el 23/09, T0c el 24/09)
+
+`scripts/db-ci/supabase_stub.sql` es una réplica mínima de `auth` y `storage` para poder aplicar migraciones y pgTAP sobre un Postgres normal en CI, sin Docker. El 23/09 se descubrió que `storage.objects` en el Storage real (imagen `storage-api:v1.72.1`) trae un disparador `protect_delete` que el stub no reproducía: bloquea **cualquier** `DELETE` directo por SQL antes de que la RLS se evalúe. Una prueba pgTAP daba por hecho que un `DELETE` bloqueado por RLS devuelve 0 filas en silencio — cierto en el stub, falso en el Storage real — así que pasaba en CI por un motivo que no existe fuera de CI. Corregido: el stub ya incluye ese disparador y la prueba pasó a comprobar lo que de verdad ocurre (`throws_ok` en vez de `is_empty`). Detalle en `docs/revisiones.md` (T0 y T0b de la entrega 3).
+
+Ese hallazgo obligó a revisar el resto del stub contra la base local real. Lo que se encontró, comparando `\d storage.objects`, `\d storage.buckets`, `pg_trigger`, `pg_policies` y `information_schema.role_table_grants` en la base local con lo que define el stub:
+
+| Divergencia | Stub | Storage real | Riesgo si no se corrige |
+| --- | --- | --- | --- |
+| Disparador `protect_delete` en `storage.objects` | Ausente → **corregido** en T0b | Bloquea cualquier `DELETE` directo | Cerrado |
+| Disparador `protect_delete` en `storage.buckets` | Ausente | Bloquea cualquier `DELETE` directo sobre buckets | Ninguna prueba borra buckets hoy; si se escribe una, pasaría en CI sin pasar en real |
+| RLS en `storage.buckets` | Deshabilitada → **corregido** en T0c: habilitada, cero políticas | Habilitada, con **cero políticas** → `authenticated` no ve ninguna fila por SQL directo | Cerrado. Comprobado en el stub: `set role authenticated; select count(*) from storage.buckets` pasa de 1 a 0, como en la base real |
+| Privilegios de tabla en `storage.objects`/`storage.buckets` | Solo `authenticated`/`service_role`, y parciales → **corregido** en T0c: `grant all` a `anon`, `authenticated` y `service_role` | Todos los privilegios (incluido `TRUNCATE`) para `anon`, `authenticated` y `service_role` — la barrera real es la RLS, no el `GRANT` | Cerrado. Una política escrita por error `to public` ya se comportaría en CI igual que en real. `role_table_grants` y `pg_class.relrowsecurity` coinciden fila a fila entre stub y base local |
+| Columnas de `storage.objects` | `id, bucket_id, name, owner, created_at` | Además `updated_at, last_accessed_at, metadata, path_tokens, version, owner_id, user_metadata, archived_at, is_delete_marker, is_versioned` | Ninguna migración ni política propia las usa hoy. Si una futura entrega las necesita, el stub debe ampliarse antes |
+| Columnas de `storage.buckets` | `id, name, public, file_size_limit, allowed_mime_types` | Además `updated_at, avif_autodetection, owner_id, type, versioning_status` (con checks) | Igual que arriba: sin impacto mientras no se usen |
+| `storage.foldername()` | Sin volatilidad declarada (por defecto `VOLATILE`) | `IMMUTABLE` | Misma lógica, sin impacto funcional conocido |
+| `auth.users` | Mínima: `id, email, created_at` | Decenas de columnas (contraseña cifrada, confirmación de email, teléfono, baneos, metadatos…) | Nuestros únicos disparadores sobre `auth.users` (`on_auth_user_before_insert`, `on_auth_user_created`) solo leen `new.id`/`new.email`; sin impacto mientras no se necesite otro campo |
+
+**Qué se corrigió en T0c y qué se dejó (decisión de Dani).** Se corrigieron las dos divergencias que cambian lo que el stub permite: RLS en `storage.buckets` y privilegios de `anon`. Con el stub ya estricto, las 97 comprobaciones que había siguieron pasando: ninguna se apoyaba en que el stub fuera más permisivo. Se dejan solo documentadas las columnas que faltan y la volatilidad de `storage.foldername()`: ninguna tiene consumidor hoy, y el stub se amplía cuando una prueba lo necesita, nunca antes (regla 8 de `AGENTS.md`). Tampoco se añade el disparador `protect_delete` de `storage.buckets`, por el mismo motivo: ninguna prueba borra buckets.
+
+**`protect_delete` es un guardarraíl, no una barrera de seguridad.** Solo bloquea el borrado si el GUC `storage.allow_delete_query` no vale `'true'`, y ese GUC es de marcador de posición: comprobado el 24/09 en la base local real (Postgres 17.6, `storage-api:v1.72.1`) y en el stub que `authenticated` lo fija sin error con `set local` y con `set_config`. No abre ninguna vía de ataque —a través de la API no se ejecuta SQL arbitrario, y con el guardarraíl levantado la RLS sigue mandando—, pero permite probar la RLS de borrado de verdad. `004_storage.test.sql` lo hace ahora con el guardarraíl levantado:
+
+- Un `DELETE ... WHERE ... RETURNING` de B sobre las imágenes de A devuelve 0 filas. Ojo: esto se sostiene aunque `attachments_delete_own` estuviera mal, porque un `DELETE` con `WHERE` o `RETURNING` aplica también las políticas de SELECT, y B no ve las filas de A. Comprobado por mutación: con `using (true)` en la política de borrado, esta aserción sigue pasando.
+- Por eso hay una segunda: un `DELETE` de B **sin** `WHERE` ni `RETURNING`, que solo pasa por la política de DELETE, y después A sigue viendo su imagen. Con la mutación `using (true)`, esta falla.
+- Control: A sí borra su propia imagen con la misma sentencia. Sin él, las anteriores pasarían también si no hubiera nada que borrar.
+
+Observación sobre el Storage real, fuera de nuestro control: `anon` y `authenticated` tienen `TRUNCATE` sobre `storage.objects`, y `TRUNCATE` no pasa por la RLS ni por los disparadores de `DELETE`. No es explotable a través de la API (PostgREST no expone el esquema `storage` ni ejecuta `TRUNCATE`), pero lo sería desde cualquier función propia `SECURITY INVOKER` que ejecutara SQL dinámico sobre ese esquema. No tenemos ninguna.
+
+**Lo que CI cubre de verdad con esto:** aislamiento por RLS entre usuarios en `public.*` y en `storage.objects` (lectura, subida y borrado, este último de forma conductual y aislando la política de DELETE), RLS y privilegios de `storage.buckets` y `storage.objects` iguales a los reales (incluido `anon`), privilegios por columna, funciones `SECURITY DEFINER`, reglas de dominio y disparador `protect_delete` sobre `storage.objects`.
+
+**Lo que CI NO cubre:** el disparador de `storage.buckets`, el borrado de un objeto a través del cliente de Storage (T4, contra Storage de verdad) y cualquier columna de `storage.objects`/`storage.buckets`/`auth.users` que el stub no reproduce.
+
 ## Verificación
 
-Las pruebas de `supabase/tests/database` (95 comprobaciones) cubren:
+Las pruebas de `supabase/tests/database` (101 comprobaciones) cubren:
 
 - **Estructura:** todas las tablas tienen RLS, `anon` carece de privilegios y las funciones internas no son accesibles.
 - **Aislamiento:** un segundo usuario intenta leer, modificar, borrar, enlazar y suplantar.
 - **Reglas de dominio:** transiciones, normalización y búsqueda.
-- **Almacenamiento:** rutas ajenas, recorrido de directorios y extensiones no permitidas.
+- **Almacenamiento:** rutas ajenas, recorrido de directorios, extensiones no permitidas y borrado de ficheros ajenos.
 - **Funciones de servidor:** vinculación con Telegram, reclamo de avisos, cuota de IA, altas y borrado de cuenta.
 
 La capa de datos de la app se prueba además contra la base real a través de PostgREST (`npm run test:api`, 9 casos): permisos por columna, transiciones, aislamiento entre usuarios y acceso anónimo. La prueba de extremo a extremo (`npm run test:e2e`, 11 comprobaciones) ejecuta el build web de producción con una sesión iniciada, sigue una tarea desde la captura rápida hasta la base de datos y comprueba que un enlace externo llega decodificado pero no crea nada sin confirmación.

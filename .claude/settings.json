@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Read(./**/.env.cloud)",
+      "Read(./supabase/.temp/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(npx supabase db push:*)",
+      "Bash(npx supabase db reset:*)",
+      "Bash(npx supabase link:*)",
+      "Bash(npx supabase config push:*)",
+      "Bash(npx supabase secrets:*)",
+      "Bash(npx wrangler:*)"
+    ],
+    "allow": [
+      "Bash(npm run revision:*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/revision.ps1:*)"
+    ]
+  }
+}

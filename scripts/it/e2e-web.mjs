@@ -40,9 +40,12 @@ result.resumenCabecera = /abierta/.test(text());
 
 const input = w.document.querySelector('input[aria-label="Nueva tarea"]');
 result.hayCaptura = !!input;
-Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(input, 'Revisar ITV el viernes #coche !3');
+Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(input, 'Revisar ITV mañana #coche !3');
 input.dispatchEvent(new w.Event('input', { bubbles: true }));
-result.vistaPrevia = await until(() => text().includes('Prioridad alta') && text().includes('#coche') && text().includes('Viernes'), 3000);
+// «mañana» y no un día de la semana: la etiqueta de un día concreto depende de qué día se ejecute
+// (el viernes es «Mañana» los jueves). El análisis de días y sus etiquetas se prueban con fecha fija
+// en packages/core/test/quickAdd.test.ts y apps/app/src/lib/lib.test.ts.
+result.vistaPrevia = await until(() => text().includes('Prioridad alta') && text().includes('#coche') && text().includes('Mañana'), 3000);
 input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 result.apareceEnLista = await until(() => text().includes('Revisar ITV'), 3000);
 result.campoVaciado = input.value === '';

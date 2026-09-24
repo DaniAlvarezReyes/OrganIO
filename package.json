@@ -12,7 +12,8 @@
     "test:api": "scripts/test-api.sh",
     "test:e2e": "scripts/test-e2e-web.sh",
     "postinstall": "node scripts/generate-icons.mjs",
-    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/organio.ps1"
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/organio.ps1",
+    "revision": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/revision.ps1"
   },
   "engines": {
     "node": ">=22"

@@ -37,7 +37,7 @@ packages/core/            Lógica compartida sin dependencias de plataforma
 supabase/
   config.toml             Configuración del entorno local (endurecida)
   migrations/             Esquema, RLS, privilegios, funciones y almacenamiento
-  tests/database/         Pruebas pgTAP de seguridad y dominio (95 comprobaciones)
+  tests/database/         Pruebas pgTAP de seguridad y dominio (101 comprobaciones)
   templates/              Correo del código de acceso
   seed.sql                Correo invitado para desarrollo local
 OrganIO.cmd               Lanzador para Windows: instala, configura y arranca

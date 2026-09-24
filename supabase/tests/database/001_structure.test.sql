@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(13);
+select plan(15);
 
 select is_empty(
   $$ select c.relname from pg_class c
@@ -98,6 +98,26 @@ select is_empty(
   $$ select policyname from pg_policies
      where schemaname in ('public', 'storage') and 'anon' = any (roles) $$,
   'Ninguna política concede acceso a anon'
+);
+
+-- Estructura de la política de borrado: sigue siendo DELETE/authenticated y su USING es
+-- exactamente el mismo que el de attachments_select_own. El comportamiento (B no puede borrar
+-- los ficheros de A, con el guardarraíl protect_delete levantado) se prueba en
+-- 004_storage.test.sql; el borrado a través del cliente de Storage, en T4.
+select ok(
+  exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'attachments_delete_own'
+      and cmd = 'DELETE' and roles::text[] = array['authenticated']
+  ),
+  'attachments_delete_own es DELETE y solo para authenticated'
+);
+select is(
+  (select qual from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname = 'attachments_delete_own'),
+  (select qual from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname = 'attachments_select_own'),
+  'attachments_delete_own exige exactamente la misma carpeta propia que attachments_select_own'
 );
 
 select * from finish();

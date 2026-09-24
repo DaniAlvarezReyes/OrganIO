@@ -71,9 +71,12 @@ create table storage.objects (
   created_at timestamptz default now(),
   unique (bucket_id, name)
 );
+-- Como en Storage real (comprobado con role_table_grants y pg_class en la base local): RLS en
+-- las dos tablas, cero políticas en buckets, y TODOS los privilegios también para anon. La barrera
+-- es la RLS, no el GRANT: sin anon aquí, una política escrita por error `to public` pasaría en CI.
 alter table storage.objects enable row level security;
-grant select, insert, update, delete on storage.objects to authenticated, service_role;
-grant select on storage.buckets to authenticated, service_role;
+alter table storage.buckets enable row level security;
+grant all on storage.objects, storage.buckets to anon, authenticated, service_role;
 
 -- Misma definición que Supabase
 create or replace function storage.foldername(name text) returns text[] language plpgsql as $$
@@ -86,4 +89,21 @@ end;
 $$;
 grant execute on function storage.foldername(text) to anon, authenticated, service_role;
 
-create extension if not exists pgtap with schema extensions;
+-- Storage real bloquea CUALQUIER DELETE directo por SQL sobre storage.objects (y sobre
+-- storage.buckets) antes de que la RLS se evalúe, para forzar el uso de la API de Storage.
+-- Misma definición que trae la imagen storage-api:v1.72.1 (verificado con pg_get_functiondef
+-- sobre la base local real). Sin este disparador, pruebas escritas contra `storage.objects`
+-- que asuman que un DELETE bloqueado por RLS devuelve 0 filas en silencio pasan en CI por una
+-- razón que no existe en el Storage real.
+create or replace function storage.protect_delete() returns trigger language plpgsql as $$
+begin
+  if coalesce(current_setting('storage.allow_delete_query', true), 'false') != 'true' then
+    raise exception 'Direct deletion from storage tables is not allowed. Use the Storage API instead.'
+      using hint = 'This prevents accidental data loss from orphaned objects.',
+            errcode = '42501';
+  end if;
+  return null;
+end;
+$$;
+create trigger protect_objects_delete before delete on storage.objects
+  for each statement execute function storage.protect_delete();

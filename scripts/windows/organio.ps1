@@ -186,13 +186,15 @@ Step 'Supabase (base de datos local)'
 Info 'La primera vez descarga las imágenes de Docker: puede tardar bastante.'
 Invoke-Checked 'npx' @('supabase', 'start')
 
-if ($Reset -or -not (Test-Path $InitMarker)) {
-  if ($Reset) {
-    $answer = Read-Host '    Esto BORRA todos los datos locales de OrganIO. Escribe BORRAR para continuar'
-    if ($answer -ne 'BORRAR') { Fail 'Cancelado. No se ha borrado nada.' }
-  }
+if ($Reset) {
+  $answer = Read-Host '    Esto BORRA todos los datos locales de OrganIO. Escribe BORRAR para continuar'
+  if ($answer -ne 'BORRAR') { Fail 'Cancelado. No se ha borrado nada.' }
   Info 'Creando la base de datos...'
   Invoke-Checked 'npx' @('supabase', 'db', 'reset', '--yes')
+  New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+  [IO.File]::WriteAllText($InitMarker, (Get-Date -Format o), $Utf8NoBom)
+} elseif (-not (Test-Path $InitMarker)) {
+  # supabase start ya aplica las migraciones y seed.sql al crear la base inicial.
   New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
   [IO.File]::WriteAllText($InitMarker, (Get-Date -Format o), $Utf8NoBom)
 } else {
