@@ -104,5 +104,3 @@ end;
 $$;
 create trigger protect_objects_delete before delete on storage.objects
   for each statement execute function storage.protect_delete();
-
-create extension if not exists pgtap with schema extensions;
