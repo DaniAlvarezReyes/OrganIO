@@ -92,6 +92,17 @@ Decisión sobre lo que quedó documentado en `docs/SEGURIDAD.md` tras T0b. No se
 - Incluye tareas hechas y descartadas, al contrario que la lista principal: es justo para lo que se busca.
 - Aceptación: buscar «segu» encuentra «seguro» por el acierto parcial de título; buscar un texto que solo aparece en una nota encuentra la tarea y lo indica.
 
+### T6b · La lista y la captura, al nivel del boceto (Claude Code; revisa Codex)
+
+Hasta aquí la entrega 3 añade pantallas nuevas, pero las dos que ya existen se quedan como estaban y el boceto las dibuja distintas. Esta tarea cierra esa diferencia. Depende de T2 (contador de subtareas), T4 (indicador de imágenes) y T6 (pantalla de búsqueda).
+
+- **Lista.** Chips de estado con recuento — «Activas · 9», «Estancadas · 2», «Hechas» — junto a los de etiqueta que ya hay. Cabeceras de grupo del boceto: «Necesita un empujón», «Con fecha esta semana», «Bandeja». En cada fila: días sin avanzar cuando toque, «2 de 5 subtareas» y el icono de imagen si tiene adjuntos.
+- **Campo de búsqueda en la cabecera** de la lista, que al escribir abre la pantalla de búsqueda con lo escrito. Es la decisión 2, y es lo que evita una tercera pestaña permanente.
+- **Barra inferior fija** con «Nueva tarea» de 52 px de alto y el botón de búsqueda al lado.
+- **Captura rápida: el panel «Lo he entendido así».** Título, fecha, etiqueta y prioridad que ha sacado del texto, cada uno tocable para corregirlo, y una línea que diga que si no cuadra nada se guarda tal cual. Es la decisión 4: interpretar lenguaje natural sin enseñar la interpretación es un error silencioso.
+- **Selector de tema en Ajustes:** sistema, claro u oscuro. Hoy la app sigue al sistema operativo sin alternativa. Va aquí porque el modo oscuro es el que Dani usa a diario y el boceto ya lo cubre.
+- Aceptación: abiertas la app y el boceto en paralelo, en claro y en oscuro, no hay ninguna diferencia que no sea deliberada y anotada.
+
 ### T7 · Cierre (Claude Code; revisa Codex)
 
 - Registrar `task_details` y `search` como activas en `packages/core/src/features.ts` y en `private.app_features`. Las claves ya existen; hay prueba de sincronía que lo comprueba.
