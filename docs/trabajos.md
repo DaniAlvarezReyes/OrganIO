@@ -1,0 +1,27 @@
+# Mapa de trabajos
+
+Quién ha hecho qué, tarea a tarea. Complementa a `docs/revisiones.md` (que registra los hallazgos de cada revisión cruzada): aquí se ve el **reparto**, allí la **calidad**.
+
+Lo rellena Claude Code al cerrar cada tarea, en el mismo paso en que actualiza `docs/estado.md`. Una fila por tarea del plan.
+
+Columnas: **Implementa** y **Revisa** son `Claude Code`, `Codex` o `Dani`. **Verifica** es quien ejecutó las pruebas de verdad (no quien dice haberlas ejecutado).
+
+| Fecha | Entrega · tarea | Qué se hizo | Implementa | Revisa | Verifica | Ficheros principales |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-09-21 | 1 · Cimientos | Esquema completo (tareas, subtareas, notas, adjuntos, eventos, rutinas, telegram, push, ia), RLS tabla a tabla, RPC, pgTAP (5 suites), núcleo compartido, CI de 4 trabajos | Claude Code | — (sin registrar) | Claude Code | `supabase/migrations/*`, `supabase/tests/database/*`, `packages/core/*`, `.github/workflows/ci.yml` |
+| 2026-09-21 | 2 · App en navegador | Acceso por código, lista agrupada, captura rápida, detalle y edición de tarea, ajustes, tema e hilo índigo→ámbar, lanzador de Windows | Claude Code | — (sin registrar) | Claude Code | `apps/app/app/*`, `apps/app/src/*`, `scripts/windows/organio.ps1` |
+| 2026-09-22 | 2.5 · T0 | Primer arranque sin `db reset` redundante, `[analytics]` desactivado, manifiesto regenerado | Claude Code | — (Codex sin conexión: `CONNECTION_CLOSED`) | Claude Code | `scripts/windows/organio.ps1`, `supabase/config.toml`, `scripts/windows/manifest.sha256` |
+| 2026-09-22 | 3 · plan | Plan de la entrega 3 (detalle de tarea y búsqueda), con las tres decisiones de diseño abiertas | Claude (diseño) | Dani | — | `docs/plan/entrega-3-detalle.md` |
+| 2026-09-23 | 2.5 · T0 (prueba del script) | Primera ejecución de `npm run revision`: sin ajustes necesarios, aprobado sin hallazgos | Claude Code | Codex (CLI) | Claude Code | `scripts/windows/revision.ps1` |
+| 2026-09-23 | 3 · T0 | Diagnosticado el fallo de `004_storage.test.sql`: trigger `protect_delete` de Storage real ausente en el stub de CI, no es estado sucio. Cierra T0 con hallazgo concreto, no con prueba en verde | Claude Code | Codex (CLI, esfuerzo medium) | Claude Code | `supabase/tests/database/004_storage.test.sql`, `scripts/db-ci/supabase_stub.sql` |
+| 2026-09-23 | 3 · T0b | Arreglada la línea 73 de `004_storage.test.sql` (`throws_ok` sobre SQLSTATE `42501`), añadido el disparador `protect_delete` al stub de CI, recuperada la cobertura perdida con una aserción estructural en `001_structure.test.sql` (igualdad exacta de `qual` entre `attachments_delete_own` y `attachments_select_own`), y auditados el resto de divergencias stub↔Storage real en `docs/SEGURIDAD.md`. Codex rechazó la primera versión (regex laxo en la aserción estructural); corregida y aprobada en la segunda ronda. 97/97 en local y en una simulación manual del job `database` de CI (sin `pg_prove` en Windows, aplicado el mismo stub y migraciones a mano dentro del contenedor Docker) | Claude Code | Codex (CLI, esfuerzo medium, 2 rondas) | Claude Code | `supabase/tests/database/004_storage.test.sql`, `supabase/tests/database/001_structure.test.sql`, `scripts/db-ci/supabase_stub.sql`, `docs/SEGURIDAD.md` |
+
+> Las tres primeras filas están reconstruidas a partir del estado del repositorio, no de un registro llevado en su momento. A partir de la tarea T1 de la entrega 2.5, cada fila se escribe al cerrar la tarea.
+
+## Resumen del reparto
+
+Se actualiza cada dos entregas, junto con el resumen de `docs/revisiones.md`.
+
+- Tareas implementadas: Claude Code 6 · Codex 0 · Dani 0
+- Revisiones registradas de Codex: 4 (todas por CLI con `npm run revision`, tras retirar el servidor MCP que no conectaba); una de ellas (T0b, ronda 1) encontró un hallazgo importante real y devolvió veredicto «no aprobado»
+- Lectura: Codex ya revisa de verdad, no en apariencia: en T0b encontró un fallo real en una prueba que Claude Code había escrito (un regex demasiado laxo) y obligó a una segunda ronda. El reparto de implementación sigue siendo 100% Claude Code; falta que Codex ejerza también de ejecutor de apoyo en tareas mecánicas, como prevé `AGENTS.md`.
