@@ -1,2 +1,16 @@
-# Los scripts de shell se ejecutan en CI (Linux): siempre LF, aunque se editen en Windows.
+# Finales de línea fijados en el repositorio: el índice guarda siempre LF y cada fichero sale igual
+# en cualquier máquina, sin depender de core.autocrlf.
+* text=auto eol=lf
+
+# Windows: los ejecuta cmd.exe o PowerShell.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Linux (CI): shell y SQL que se ejecutan con bash y psql.
 *.sh text eol=lf
+*.sql text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
