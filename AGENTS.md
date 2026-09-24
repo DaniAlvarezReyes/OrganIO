@@ -59,6 +59,7 @@ La base de datos de la entrega 3 ya existe y está probada (tablas, RLS, `search
 11. **Errores.** Mensajes en español y sin detalles técnicos: siempre a través de `toUserError`.
 12. **Funcionalidades nuevas** se registran en `packages/core/src/features.ts` y en `private.app_features`.
 13. **Documentación.** Al cerrar una tarea, actualizar README, `docs/SEGURIDAD.md` y la tabla de estado de este fichero si procede.
+14. **Ningún fallo es «ajeno» sin diagnóstico.** Una prueba en rojo no se cataloga como ajena, preexistente o «solo de CI» sin haber encontrado la causa y comprobado que no depende de la tarea. Si no se ha diagnosticado, la tarea no está cerrada. Una prueba que deba omitirse fuera de CI se omite de forma visible (`skipIf`, con el motivo), nunca excluyéndola de la configuración.
 
 ## Trabajo entre Claude Code y Codex
 
