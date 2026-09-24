@@ -7,7 +7,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.expo', '.git', '.organio', '.temp', 'web-build']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.expo', '.git', '.organio', '.temp', '.branches', 'web-build']);
 const SKIP_FILES = new Set(['package-lock.json', 'manifest.sha256', '.env']);
 
 function* walk(dir) {
